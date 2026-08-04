@@ -13,6 +13,12 @@ sources:
       - name: hubspot_contact_company_map
         description: "Contact-to-company associations."
         loaded_at_field: extracted_at
+      - name: hubspot_deals
+        description: "Append-only HubSpot deal snapshots. hs_is_closed_won carried as-is."
+        loaded_at_field: extracted_at
+      - name: hubspot_deal_contacts
+        description: "Deal-to-contact associations for channel attribution."
+        loaded_at_field: extracted_at
 
 models:
   - name: stg_hubspot_contacts
@@ -35,6 +41,20 @@ models:
       - name: contact_id
         tests: [not_null, unique]
 
+  - name: stg_hubspot_deals
+    description: "Latest snapshot per deal id from raw.hubspot_deals."
+    columns:
+      - name: deal_id
+        tests: [not_null, unique]
+
+  - name: stg_deal_contacts
+    description: "Latest deal-contact associations."
+    columns:
+      - name: deal_id
+        tests: [not_null]
+      - name: contact_id
+        tests: [not_null]
+
   - name: dim_contact
     description: "One row per contact with company fields via association."
     columns:
@@ -48,6 +68,28 @@ models:
     columns:
       - name: company_id
         tests: [not_null, unique]
+
+  - name: dim_deal
+    description: "One row per deal (latest snapshot). hs_is_closed_won carried as-is."
+    columns:
+      - name: deal_id
+        tests: [not_null, unique]
+
+  - name: bridge_deal_contact
+    description: "Links deals to contacts for channel attribution."
+    columns:
+      - name: deal_id
+        tests: [not_null]
+      - name: contact_id
+        tests: [not_null]
+
+  - name: int_contact_channel
+    description: "One row per contact with first-touch channel from UTM taxonomy."
+    columns:
+      - name: contact_id
+        tests: [not_null, unique]
+      - name: channel
+        tests: [not_null]
 
   - name: mart_enrichment_gaps
     description: "One row per contact with boolean gap flags for hs_seniority, industry, hs_employee_range."
@@ -69,3 +111,15 @@ models:
           - not_null
           - accepted_values:
               values: [true, false]
+
+  - name: mart_channel_performance
+    description: "One row per channel with contacts, deals, win rate, pipeline $, won $, avg days-to-close."
+    columns:
+      - name: channel
+        tests: [not_null, unique]
+      - name: contacts
+        tests: [not_null]
+      - name: closed_won
+        tests: [not_null]
+      - name: win_rate_contacts
+        tests: [not_null]
