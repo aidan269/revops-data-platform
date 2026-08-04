@@ -1,0 +1,71 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: hubspot_contacts
+        description: "Append-only HubSpot contact snapshots. Latest per id selected by staging."
+        loaded_at_field: extracted_at
+      - name: hubspot_companies
+        description: "Append-only HubSpot company snapshots. Latest per id selected by staging."
+        loaded_at_field: extracted_at
+      - name: hubspot_contact_company_map
+        description: "Contact-to-company associations."
+        loaded_at_field: extracted_at
+
+models:
+  - name: stg_hubspot_contacts
+    description: "Latest snapshot per contact id from raw.hubspot_contacts."
+    columns:
+      - name: contact_id
+        tests: [not_null, unique]
+      - name: email
+        tests: [not_null]
+
+  - name: stg_hubspot_companies
+    description: "Latest snapshot per company id from raw.hubspot_companies."
+    columns:
+      - name: company_id
+        tests: [not_null, unique]
+
+  - name: stg_contact_company_map
+    description: "Latest contact-company association per contact."
+    columns:
+      - name: contact_id
+        tests: [not_null, unique]
+
+  - name: dim_contact
+    description: "One row per contact with company fields via association."
+    columns:
+      - name: contact_id
+        tests: [not_null, unique]
+      - name: email
+        tests: [not_null]
+
+  - name: dim_company
+    description: "One row per company (latest snapshot)."
+    columns:
+      - name: company_id
+        tests: [not_null, unique]
+
+  - name: mart_enrichment_gaps
+    description: "One row per contact with boolean gap flags for hs_seniority, industry, hs_employee_range."
+    columns:
+      - name: contact_id
+        tests: [not_null, unique]
+      - name: gap_hs_seniority
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+      - name: gap_industry
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+      - name: gap_hs_employee_range
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]

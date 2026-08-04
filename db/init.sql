@@ -23,9 +23,9 @@ CREATE TABLE IF NOT EXISTS analytics.hubspot_writeback_log (
     id           BIGSERIAL PRIMARY KEY,
     written_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     object_type  TEXT,                            -- contact / company / deal
-    object_id    TEXT,
-    field        TEXT,                            -- must be on the whitelist
+    object_id    TEXT,                             -- HubSpot object id
+    field        TEXT,                             -- must be on the whitelist
     old_value    TEXT,
     new_value    TEXT,
-    dry_run      BOOLEAN NOT NULL DEFAULT true
+    dry_run      BOOLEAN NOT NULL DEFAULT true     -- true = simulated, false = live
 );

@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 .venv/
+venv/
 .env
 # ingestion local file (prototype fallback)
 leads_raw.jsonl
@@ -9,3 +10,5 @@ leads_raw.jsonl
 target/
 dbt_packages/
 logs/
+# extract local state
+*.extract_state.json
