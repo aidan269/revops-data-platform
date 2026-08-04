@@ -12,6 +12,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db/02_hubspot_raw.sql:/docker-entrypoint-initdb.d/02_hubspot_raw.sql:ro
 
   adminer:                      # lightweight DB browser at http://localhost:8080
     image: adminer
@@ -30,6 +31,16 @@ services:
       DATABASE_URL: postgresql://revops:revops@postgres:5432/warehouse
     ports: ["8000:8000"]
     depends_on: [postgres]
+
+  monitor:                      # daily data-quality monitor (runs at 09:00 UTC)
+    build:
+      context: .
+      dockerfile: monitor.Dockerfile
+    environment:
+      DATABASE_URL: postgresql://revops:revops@postgres:5432/warehouse
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    depends_on: [postgres]
+    profiles: ["monitor"]        # opt-in service: `docker compose --profile monitor up monitor`
 
 volumes:
   pgdata:

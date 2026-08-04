@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS raw.leads_raw (
 CREATE INDEX IF NOT EXISTS idx_leads_raw_received ON raw.leads_raw (received_at);
 
 -- A write-back audit log so every controlled push to HubSpot is recorded.
+-- Every write (dry-run or live) logs: object, field, old → new, source, batch_id.
 CREATE TABLE IF NOT EXISTS analytics.hubspot_writeback_log (
     id           BIGSERIAL PRIMARY KEY,
     written_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -27,5 +28,9 @@ CREATE TABLE IF NOT EXISTS analytics.hubspot_writeback_log (
     field        TEXT,                             -- must be on the whitelist
     old_value    TEXT,
     new_value    TEXT,
+    source       TEXT,                             -- mapping rule + jobtitle that produced new_value
+    batch_id     TEXT,                             -- groups a single approved writeback batch
     dry_run      BOOLEAN NOT NULL DEFAULT true     -- true = simulated, false = live
 );
+
+CREATE INDEX IF NOT EXISTS idx_writeback_batch ON analytics.hubspot_writeback_log (batch_id);
