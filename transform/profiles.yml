@@ -1,0 +1,15 @@
+# dbt profiles.yml — local dev against the Docker Postgres.
+# Used via: cd transform && dbt build --profiles-dir .
+
+revops:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      user: revops
+      password: revops
+      port: 5432
+      dbname: revops
+      schema: analytics
+      threads: 4
