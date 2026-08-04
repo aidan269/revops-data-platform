@@ -1,0 +1,36 @@
+# RevOps data platform — local backend for the second Mac.
+# `docker compose up -d` brings up the warehouse, a DB browser, the local LLM, and the
+# append-only ingestion endpoint.
+services:
+  postgres:                     # the warehouse (raw + analytics schemas)
+    image: postgres:16
+    environment:
+      POSTGRES_USER: revops
+      POSTGRES_PASSWORD: revops
+      POSTGRES_DB: warehouse
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  adminer:                      # lightweight DB browser at http://localhost:8080
+    image: adminer
+    ports: ["8080:8080"]
+    depends_on: [postgres]
+
+  ollama:                       # local LLM backend for Hermes
+    image: ollama/ollama
+    ports: ["11434:11434"]
+    volumes:
+      - ollama:/root/.ollama
+
+  ingest:                       # append-only landing zone (webhook receiver)
+    build: ./ingestion          # drop the landing-zone prototype here (FastAPI)
+    environment:
+      DATABASE_URL: postgresql://revops:revops@postgres:5432/warehouse
+    ports: ["8000:8000"]
+    depends_on: [postgres]
+
+volumes:
+  pgdata:
+  ollama:

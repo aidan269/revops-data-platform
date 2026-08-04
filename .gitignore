@@ -1,0 +1,11 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+.env
+# ingestion local file (prototype fallback)
+leads_raw.jsonl
+# dbt
+target/
+dbt_packages/
+logs/
