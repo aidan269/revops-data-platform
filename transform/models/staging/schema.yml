@@ -19,6 +19,15 @@ sources:
       - name: hubspot_deal_contacts
         description: "Deal-to-contact associations for channel attribution."
         loaded_at_field: extracted_at
+      - name: hubspot_campaigns
+        description: "Append-only HubSpot campaign snapshots."
+        loaded_at_field: extracted_at
+      - name: hubspot_campaign_members
+        description: "Campaign-to-contact associations."
+        loaded_at_field: extracted_at
+      - name: hubspot_engagements
+        description: "Append-only engagement events (email_open, email_click, form_submission, meeting)."
+        loaded_at_field: extracted_at
 
 models:
   - name: stg_hubspot_contacts
@@ -122,4 +131,64 @@ models:
       - name: closed_won
         tests: [not_null]
       - name: win_rate_contacts
+        tests: [not_null]
+
+  - name: stg_hubspot_campaigns
+    description: "Latest snapshot per campaign id."
+    columns:
+      - name: campaign_id
+        tests: [not_null, unique]
+
+  - name: stg_campaign_members
+    description: "Latest campaign-contact associations."
+    columns:
+      - name: campaign_id
+        tests: [not_null]
+      - name: contact_id
+        tests: [not_null]
+
+  - name: stg_hubspot_engagements
+    description: "Latest snapshot per engagement id."
+    columns:
+      - name: engagement_id
+        tests: [not_null, unique]
+      - name: contact_id
+        tests: [not_null]
+
+  - name: fct_touchpoint
+    description: "One row per contact-touchpoint — the spine for attribution."
+    columns:
+      - name: touchpoint_id
+        tests: [not_null, unique]
+      - name: contact_id
+        tests: [not_null]
+      - name: channel
+        tests: [not_null]
+
+  - name: dim_campaign
+    description: "One row per campaign with type + messaging_theme (advisory)."
+    columns:
+      - name: campaign_id
+        tests: [not_null, unique]
+
+  - name: mart_attribution
+    description: "Per-touchpoint credit under first-touch, last-touch, and linear multi-touch."
+    columns:
+      - name: touchpoint_id
+        tests: [not_null]
+      - name: contact_id
+        tests: [not_null]
+      - name: deal_id
+        tests: [not_null]
+
+  - name: mart_campaign_performance
+    description: "Per campaign and campaign type — touchpoints, contacts influenced, pipeline, won $."
+    columns:
+      - name: campaign_id
+        tests: [not_null, unique]
+
+  - name: mart_messaging
+    description: "Per messaging_theme — engagement rate + downstream conversion."
+    columns:
+      - name: messaging_theme
         tests: [not_null]
