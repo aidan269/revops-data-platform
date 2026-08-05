@@ -192,3 +192,25 @@ models:
     columns:
       - name: messaging_theme
         tests: [not_null]
+
+  - name: int_won_accounts
+    description: "One row per closed-won deal with firmographics, channel, seniority, coverage flags."
+    columns:
+      - name: deal_id
+        tests: [not_null, unique]
+
+  - name: mart_icp_profile
+    description: "Won vs open vs lost profiles across industry, size, seniority, channel, deal size."
+    columns:
+      - name: dimension
+        tests: [not_null]
+      - name: dimension_value
+        tests: [not_null]
+
+  - name: mart_icp_fit_score
+    description: "Deterministic ICP-fit score on open pipeline (max 100, explainable weighted match)."
+    columns:
+      - name: deal_id
+        tests: [not_null, unique]
+      - name: icp_fit_score
+        tests: [not_null]
