@@ -19,7 +19,7 @@ read-only warehouse/Git state.
 uv pip install -r requirements.txt
 ```
 
-The `mcp>=1.28,<1.29` line pulls the FastMCP server API used by the bridge.
+The `mcp>=1.28,<2` line pulls the FastMCP server API used by the bridge.
 
 ### 2. Ensure Ollama is running with a model
 
@@ -33,8 +33,9 @@ The server talks to Ollama over the **host** loopback
 
 ### 3. Configure Codex
 
-Claude Code's MCP integration picks up servers from a config file.  Add the
-following entry:
+A ready-made config is committed at `.codex/mcp.json` (relative paths, works
+from the repo root).  If your MCP client reads from a different location,
+add the equivalent entry:
 
 ```jsonc
 // .codex/mcp.json  (or wherever your MCP config lives)
@@ -60,22 +61,25 @@ following entry:
 ### 4. Verify the bridge works
 
 ```bash
-# Echo test: pipe an MCP `initialize` request over stdio.
-exec 3>&1
-{ printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"codex-test","version":"0"}}}' ; sleep 1 ; } | \
-  .venv/bin/python hermes/codex_mcp.py 2>/dev/null | head -1 | python3 -m json.tool
-exec 3>&-
-
-# Expected: a JSON object with "result" containing serverCapabilities
-# including "tools": [{"name":"hermes_reason"}, {"name":"hermes_job_status"}, ...].
+# Verify the module imports and all three tools are registered.
+PYTHONPATH= .venv/bin/python -c "
+from hermes.codex_mcp import mcp
+tools = mcp._tool_manager.list_tools()
+for t in tools: print(t.name)
+"
 ```
 
-Or, from any MCP-aware client (e.g. Claude Code once configured):
+Expected output:
+```
+hermes_reason
+hermes_job_status
+hermes_resource_status
+```
 
-> **codex-mcp.py:** what tools are available?
+From any MCP-aware client (e.g. Claude Code once configured):
 
 The server should list `hermes_reason`, `hermes_job_status`, and
-`hermes_resource_status`.
+`hermes_resource_status` in response to a `tools/list` request.
 
 ---
 
