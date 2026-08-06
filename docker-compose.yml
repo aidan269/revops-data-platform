@@ -1,9 +1,17 @@
 # RevOps data platform — local backend for the second Mac.
-# `docker compose up -d` brings up the warehouse, a DB browser, the local LLM, and the
+# `docker compose up -d` brings up the warehouse, a DB browser, and the
 # append-only ingestion endpoint.
+# The local LLM (Ollama) runs NATIVE on the host so it gets the Apple GPU —
+# containers reach it via OLLAMA_HOST=http://host.docker.internal:11434 below.
 services:
   postgres:                     # the warehouse (raw + analytics schemas)
     image: postgres:16
+    # Sized for THIS machine: 8 CPUs (sysctl hw.ncpu), Docker Desktop RAM ~7.65 GiB
+    # (hw.memsize 16 GiB). effective_cache_size is a planner hint, not an allocation.
+    command: >
+      postgres -c shared_buffers=2GB -c work_mem=128MB -c maintenance_work_mem=512MB
+      -c effective_cache_size=6GB -c max_parallel_workers=8
+      -c max_parallel_workers_per_gather=4
     environment:
       POSTGRES_USER: revops
       POSTGRES_PASSWORD: revops
@@ -19,16 +27,17 @@ services:
     ports: ["8080:8080"]
     depends_on: [postgres]
 
-  ollama:                       # local LLM backend for Hermes
-    image: ollama/ollama
-    ports: ["11434:11434"]
-    volumes:
-      - ollama:/root/.ollama
+  # ollama:                     # DISABLED — replaced by native host Ollama (Apple GPU).
+  #   image: ollama/ollama      # Native install: `brew install ollama && brew services start ollama`,
+  #   ports: ["11434:11434"]    # then `ollama pull llama3.1`. Containers reach it via
+  #   volumes:                  # OLLAMA_HOST=http://host.docker.internal:11434 below.
+  #     - ollama:/root/.ollama  # To revert: uncomment this block + the ollama volume.
 
   ingest:                       # append-only landing zone (webhook receiver)
     build: ./ingestion          # drop the landing-zone prototype here (FastAPI)
     environment:
       DATABASE_URL: postgresql://revops:revops@postgres:5432/warehouse
+      OLLAMA_HOST: http://host.docker.internal:11434   # LLM lives on the host (native Ollama)
     ports: ["8000:8000"]
     depends_on: [postgres]
 
@@ -39,9 +48,10 @@ services:
     environment:
       DATABASE_URL: postgresql://revops:revops@postgres:5432/warehouse
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      OLLAMA_HOST: http://host.docker.internal:11434   # LLM lives on the host (native Ollama)
     depends_on: [postgres]
     profiles: ["monitor"]        # opt-in service: `docker compose --profile monitor up monitor`
 
 volumes:
   pgdata:
-  ollama:
+  # ollama:                     # DISABLED with the ollama service (host runs native Ollama)

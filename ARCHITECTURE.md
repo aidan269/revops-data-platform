@@ -75,7 +75,8 @@ Dagster/Prefect orchestration. A modern data-engineer stack — a much stronger 
 ```
 revops-data-platform/
   ARCHITECTURE.md
-  docker-compose.yml       # postgres + ollama + adminer + ingest (second-Mac backend)
+  docker-compose.yml       # postgres + adminer + ingest (second-Mac backend)
+                           # LLM runs native on the host (Ollama), not in Docker
   db/init.sql              # Postgres raw + analytics schemas
   ingestion/               # webhook landing zone (see ../landing-zone prototype)
   transform/               # dbt project (staging -> marts)
@@ -86,10 +87,24 @@ revops-data-platform/
 ## Run it
 
 ```bash
-docker compose up -d        # postgres + ollama + adminer + ingest
+docker compose up -d        # postgres + adminer + ingest
+# Local LLM runs NATIVE on the host (gets the Apple GPU; Docker can't):
+brew install ollama && brew services start ollama
 ollama pull llama3.1        # first run: pull the local model
+# Containers/Hermes reach it via OLLAMA_HOST=http://host.docker.internal:11434
 # point HubSpot forms / Make at http://<second-mac-ip>:8000/ingest
 ```
+
+Long-running jobs (dbt builds, extracts, compose runs) should run under
+`caffeinate -s` so the Mac doesn't sleep mid-run — use
+`scripts/run_long_job.sh <command>`.
+
+### Resource sizing (this machine: 8 CPUs, 16 GB RAM, Docker VM ~7.65 GiB)
+
+- Postgres (`docker-compose.yml` command): shared_buffers=2GB, work_mem=128MB,
+  maintenance_work_mem=512MB, effective_cache_size=6GB (planner hint),
+  max_parallel_workers=8, max_parallel_workers_per_gather=4.
+- dbt (`transform/profiles.yml`): threads=8 (matches hw.ncpu).
 
 ## Decisions you can flip
 
