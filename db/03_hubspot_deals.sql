@@ -10,8 +10,24 @@ CREATE TABLE IF NOT EXISTS raw.hubspot_deals (
     hs_is_closed_won    BOOLEAN,
     createdate          TIMESTAMPTZ,
     closedate           TIMESTAMPTZ,
+    deal_source         TEXT,
+    deal_owner_id       TEXT,
+    next_step           TEXT,
+    next_step_updated_at TIMESTAMPTZ,
+    product_service     TEXT,
+    billing_model       TEXT,
     raw_properties      JSONB       NOT NULL DEFAULT '{}'::jsonb
 );
+
+-- Existing local databases predate Deal Source. This keeps the migration safe
+-- on both fresh and already-initialized environments.
+ALTER TABLE raw.hubspot_deals
+    ADD COLUMN IF NOT EXISTS deal_source TEXT;
+ALTER TABLE raw.hubspot_deals ADD COLUMN IF NOT EXISTS deal_owner_id TEXT;
+ALTER TABLE raw.hubspot_deals ADD COLUMN IF NOT EXISTS next_step TEXT;
+ALTER TABLE raw.hubspot_deals ADD COLUMN IF NOT EXISTS next_step_updated_at TIMESTAMPTZ;
+ALTER TABLE raw.hubspot_deals ADD COLUMN IF NOT EXISTS product_service TEXT;
+ALTER TABLE raw.hubspot_deals ADD COLUMN IF NOT EXISTS billing_model TEXT;
 
 CREATE TABLE IF NOT EXISTS raw.hubspot_deal_contacts (
     deal_id             TEXT        NOT NULL,

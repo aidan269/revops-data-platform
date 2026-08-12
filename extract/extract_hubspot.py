@@ -82,13 +82,22 @@ def _hs_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {HUBSPOT_TOKEN}"}
 
 
-def _hs_page(object_type: str, properties: list[str], after: str | None = None) -> dict:
+OBJECT_ENDPOINTS = {
+    "contact": "contacts",
+    "company": "companies",
+}
+
+
+def _hs_page(object_type: str, properties: list[str], after: str | None = None,
+             associations: str | None = None) -> dict:
     """Page the HubSpot CRM search/list API."""
     params = {"limit": "100", "properties": ",".join(properties)}
     if after:
         params["after"] = after
+    if associations:
+        params["associations"] = associations
     r = requests.get(
-        f"{HS_BASE}/crm/v3/objects/{object_type}s",
+        f"{HS_BASE}/crm/v3/objects/{OBJECT_ENDPOINTS[object_type]}",
         headers=_hs_headers(),
         params=params,
         timeout=30,
@@ -103,7 +112,7 @@ def extract_contacts_live(conn) -> int:
     after = None
     with conn, conn.cursor() as cur:
         while True:
-            page = _hs_page("contact", CONTACT_PROPS, after)
+            page = _hs_page("contact", CONTACT_PROPS, after, associations="companies")
             for obj in page.get("results", []):
                 props = obj.get("properties", {})
                 cur.execute(
@@ -123,6 +132,14 @@ def extract_contacts_live(conn) -> int:
                         json.dumps(props),
                     ),
                 )
+                # The list endpoint returns associated company IDs inline, so
+                # the contact/company map is refreshed with the same snapshot.
+                for company in obj.get("associations", {}).get("companies", {}).get("results", []):
+                    cur.execute(
+                        """INSERT INTO raw.hubspot_contact_company_map
+                           (contact_id, company_id) VALUES (%s, %s)""",
+                        (obj["id"], company["id"]),
+                    )
                 count += 1
             after = page.get("paging", {}).get("next", {}).get("after")
             if not after:

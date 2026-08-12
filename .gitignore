@@ -12,3 +12,37 @@ dbt_packages/
 logs/
 # extract local state
 *.extract_state.json
+
+# ---------------------------------------------------------------------------
+# Runtime / operational content. Deliberately NOT committed.
+# These files exist locally and are never deleted; they are simply untracked.
+# ---------------------------------------------------------------------------
+# audit ledger (append-only operational record, may contain record identifiers)
+hermes_shared/ledger/*.jsonl
+# generated evidence artifacts (production inventories, manifests, run results)
+hermes_shared/artifacts/*
+!hermes_shared/artifacts/README.md
+!hermes_shared/artifacts/examples/
+# local simulation + LangGraph checkpoints
+.automation_twin_checkpoints/
+*.checkpoint
+simulation_output/
+# raw CRM/Apollo/Zapier exports and contact files
+*.export.csv
+contact_exports/
+# local db state, logs, temp, rendered debug output
+pgdata/
+*.log
+tmp/
+.DS_Store
+# test output
+.pytest_cache/
+.coverage
+htmlcov/
+# secrets
+.env.*
+*.pem
+*.key
+
+# dbt machine-local user id
+transform/.user.yml
