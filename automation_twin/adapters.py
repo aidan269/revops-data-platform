@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .model import (COLLECTED, NOT_COLLECTED, PARTIAL, INFERRED, OBSERVED,
@@ -18,7 +19,16 @@ from .model import (COLLECTED, NOT_COLLECTED, PARTIAL, INFERRED, OBSERVED,
 from .config import artifact_root, ledger_path
 
 ROOT = Path(__file__).resolve().parents[1]
-COLLECTED_AT = "2026-08-12T21:00:00Z"
+
+
+def _now() -> str:
+    """Actual collection time. Never a frozen literal."""
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def collection_run_id(graph_sources: list[str]) -> str:
+    """Identity of one collection run, derived from the evidence actually present."""
+    return stable_id("collection", *sorted(graph_sources))
 
 
 def ART() -> Path:
@@ -44,9 +54,9 @@ def _snap(graph, system, artifact, *, workspace=None, collector="repository_arti
     if status == NOT_COLLECTED:
         baseline = False
     s = Snapshot(
-        snapshot_id=stable_id("snap", system, artifact),
+        snapshot_id=stable_id("snap", system, artifact, digest or "absent"),
         source_system=system, workspace_identifier=workspace,
-        collected_at=COLLECTED_AT, collector=collector, source_artifact=artifact,
+        collected_at=_now(), collector=collector, source_artifact=artifact,
         source_hash=digest, collection_status=status,
         baseline_established=baseline, not_collected_reason=reason,
     )
@@ -78,7 +88,7 @@ def forms_adapter(graph: Graph) -> None:
             object_type="FORM",
             state="active" if r.get("activity_state") == "active" else "unknown",
             owner_identity=None, evidence_state=COLLECTED,
-            last_observed=r.get("observed_at"), raw_definition_ref=art,
+            last_observed=r.get("observed_at") or _now(), raw_definition_ref=art,
         ))
 
 
@@ -102,7 +112,7 @@ def hubspot_adapter(graph: Graph) -> None:
             asset_id=f"hubspot:workflow:{native}", snapshot_id=s.snapshot_id,
             source_system="hubspot", native_id=native, name=name, asset_type="workflow",
             object_type="DEAL", state=state, owner_identity=None, evidence_state=ev,
-            last_observed=COLLECTED_AT, raw_definition_ref=art,
+            last_observed=_now(), raw_definition_ref=art,
         ))
     # The 161-workflow estate itself was never baselined.
     _snap(graph, "hubspot", "hubspot_workflow_estate", workspace="46025408",
@@ -143,18 +153,18 @@ def apollo_adapter(graph: Graph) -> None:
         asset_id="apollo:list_set", snapshot_id=s.snapshot_id, source_system="apollo",
         native_id=team, name=f"{counts.get('lists', 0)} Apollo lists", asset_type="list",
         object_type="CONTACT/ACCOUNT", state="active", owner_identity=None,
-        evidence_state=COLLECTED, last_observed=COLLECTED_AT, raw_definition_ref=art))
+        evidence_state=COLLECTED, last_observed=_now(), raw_definition_ref=art))
     graph.assets.append(Asset(
         asset_id="apollo:sequence_set", snapshot_id=s.snapshot_id, source_system="apollo",
         native_id=team, name=f"{counts.get('sequences', 0)} sequences (all inactive, zero sends)",
         asset_type="sequence", object_type="CONTACT", state="off",
         owner_identity="mohammad@spearbit.com", evidence_state=COLLECTED,
-        last_observed=COLLECTED_AT, raw_definition_ref=art))
+        last_observed=_now(), raw_definition_ref=art))
     graph.assets.append(Asset(
         asset_id="apollo:mailbox", snapshot_id=s.snapshot_id, source_system="apollo",
         native_id="6a39466483028f00148e7ef2", name="linked mailbox", asset_type="integration",
         object_type=None, state="active", owner_identity="mohammad@spearbit.com",
-        evidence_state=COLLECTED, last_observed=COLLECTED_AT, raw_definition_ref=art))
+        evidence_state=COLLECTED, last_observed=_now(), raw_definition_ref=art))
     # Browser-reported integration. Source and timestamp preserved; not promoted to MCP-confirmed.
     bs = _snap(graph, "apollo", "apollo_hubspot_integration", workspace=team,
                collector="browser_report", status=PARTIAL, baseline=False)
@@ -163,7 +173,7 @@ def apollo_adapter(graph: Graph) -> None:
         source_system="apollo", native_id="hubspot", name="Apollo-HubSpot integration",
         asset_type="integration", object_type=None, state="active",
         owner_identity="aidan@spearbit.com", evidence_state=PARTIAL,
-        last_observed=COLLECTED_AT,
+        last_observed=_now(),
         raw_definition_ref="browser_report:default_settings warning visible 2026-08-12"))
     for surface, reason in (
         ("apollo_imports", "Apollo MCP exposes no import/export administration surface"),
@@ -194,7 +204,7 @@ def zapier_adapter(graph: Graph) -> None:
             asset_id=f"zapier:zap:{native}", snapshot_id=s.snapshot_id, source_system="zapier",
             native_id=native, name=name, asset_type="zap", object_type=None,
             state="active", owner_identity=None, evidence_state=NOT_COLLECTED,
-            last_observed=COLLECTED_AT,
+            last_observed=_now(),
             raw_definition_ref="CRM-013 browser inventory; definition NOT_COLLECTED"))
         # Unresolved edge: the Zap is known to reach HubSpot, but no node detail exists.
         graph.edges.append(Edge(
@@ -207,48 +217,72 @@ def zapier_adapter(graph: Graph) -> None:
 
 
 def warehouse_adapter(graph: Graph, database_url: str | None = None) -> None:
-    """Attribution evidence from prior findings. Reads the warehouse only if a URL is given."""
+    """Attribution evidence from prior recorded findings.
+
+    Fails closed. Without the CRM-017 artifact present this records a
+    NOT_COLLECTED snapshot and creates NO assets, edges or field access. It never
+    materialises previously reported counts as freshly collected evidence.
+    """
     art = "CRM-017_manifest.json"
+    present = (ART() / art).exists()
+    if not present:
+        _snap(graph, "warehouse", art, workspace="46025408", collector="warehouse",
+              status=NOT_COLLECTED, baseline=False,
+              reason=("CRM-017 evidence artifact not present in the configured artifact root; "
+                      "prior contamination counts are NOT reconstructed from memory"))
+        return
+
     s = _snap(graph, "warehouse", art, workspace="46025408", collector="warehouse",
               status=COLLECTED, baseline=True)
+    manifest = json.loads((ART() / art).read_text(encoding="utf-8"))
+    counts = manifest.get("population", {}) or {}
+    contaminated = counts.get("total_contaminated_contacts")
+
     graph.assets.append(Asset(
         asset_id="hubspot:property:primary_campaign_source", snapshot_id=s.snapshot_id,
         source_system="hubspot", native_id="primary_campaign_source",
         name="Primary Campaign Source", asset_type="property", object_type="CONTACT",
         state="active", owner_identity=None, evidence_state=COLLECTED,
-        last_observed=COLLECTED_AT, raw_definition_ref=art))
-    # 1,591 contaminated contacts. Writer unidentified -> unresolved edge, no invented node.
+        last_observed=_now(), raw_definition_ref=art))
     graph.assets.append(Asset(
         asset_id="hubspot:import:unidentified_writer", snapshot_id=s.snapshot_id,
         source_system="hubspot", native_id=None,
         name="unidentified writer of vendor values into Primary Campaign Source",
         asset_type="import", object_type="CONTACT", state="unknown", owner_identity=None,
-        evidence_state=PARTIAL, last_observed=COLLECTED_AT, raw_definition_ref=art))
+        evidence_state=PARTIAL, last_observed=_now(), raw_definition_ref=art))
+    detail = (f"{contaminated} contacts carried vendor literals per {art}"
+              if contaminated is not None else
+              f"vendor literals recorded in {art}; count not present in the artifact")
     graph.field_access.append(FieldAccess(
         access_id=stable_id("fa", "unidentified", "primary_campaign_source"),
         asset_id="hubspot:import:unidentified_writer", node_id=None, system="hubspot",
         object_type="CONTACT", property_name="primary_campaign_source", operation="write",
         overwrite_behavior="unknown",
-        conditional_behavior="1591 contacts carry vendor literals; 1577 created via import",
+        conditional_behavior=f"prior recorded evidence ({art}): {detail}",
         basis=OBSERVED, confidence="high", evidence_reference=art))
     graph.edges.append(Edge(
         edge_id=stable_id("edge", "apollo", "hubspot_import"),
         asset_id="apollo:list_set", source_node_id=None, target_node_id=None,
         source_ref="apollo:list_set", target_ref="hubspot:import:unidentified_writer",
         branch_condition=None, path_type="normal", basis=INFERRED,
-        evidence_reference="7 Apollo list names match HubSpot import source files; counts differ in 6 of 7",
+        evidence_reference=f"prior recorded evidence ({art}): Apollo list names match HubSpot import source files",
         endpoints_resolved=True))
 
 
 def ledger_adapter(graph: Graph) -> None:
     """Audit ledger provenance: counts only, no message contents copied."""
-    digest = _hash_file(LEDGER())
     lp = LEDGER()
+    digest = _hash_file(lp)
     lines = sum(1 for ln in lp.read_text(encoding="utf-8").splitlines() if ln.strip()) \
         if lp.exists() else 0
+    if not lp.exists():
+        _snap(graph, "ledger", "hermes_shared/ledger/execution_events.jsonl",
+              collector="repository_artifact", status=NOT_COLLECTED, baseline=False,
+              reason="audit ledger not present in this checkout; it is operational evidence and is not committed")
+        return
     s = Snapshot(
-        snapshot_id=stable_id("snap", "ledger", "execution_events"),
-        source_system="ledger", workspace_identifier=None, collected_at=COLLECTED_AT,
+        snapshot_id=stable_id("snap", "ledger", "execution_events", digest or "absent"),
+        source_system="ledger", workspace_identifier=None, collected_at=_now(),
         collector="repository_artifact", source_artifact="hermes_shared/ledger/execution_events.jsonl",
         source_hash=digest, collection_status=COLLECTED, baseline_established=True)
     graph.snapshots.append(s)
@@ -256,7 +290,7 @@ def ledger_adapter(graph: Graph) -> None:
         asset_id="ledger:execution_events", snapshot_id=s.snapshot_id, source_system="ledger",
         native_id=None, name=f"audit ledger ({lines} valid lines)", asset_type="integration",
         object_type=None, state="active", owner_identity=None, evidence_state=COLLECTED,
-        last_observed=COLLECTED_AT, raw_definition_ref="execution_events.jsonl"))
+        last_observed=_now(), raw_definition_ref="execution_events.jsonl"))
 
 
 ADAPTERS = (forms_adapter, hubspot_adapter, apollo_adapter, zapier_adapter,

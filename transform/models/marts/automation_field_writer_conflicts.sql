@@ -5,6 +5,7 @@ with writers as (
     from {{ source('raw', 'automation_field_access') }} fa
     join {{ source('raw', 'automation_assets') }} a on a.asset_id = fa.asset_id
     where fa.operation in ('write', 'create', 'clear')
+      and fa.last_seen_load = (select max(load_id) from {{ source('raw', 'automation_loads') }})
 ),
 agg as (
     select system, object_type, property_name,

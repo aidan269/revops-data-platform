@@ -10,4 +10,9 @@ select
         as dishonest_baselines,
     false as authorizes_external_write
 from {{ source('raw', 'automation_source_snapshots') }}
+where last_seen_load = (select max(load_id) from {{ source('raw', 'automation_loads') }})
 group by 1
+
+
+-- Current state = entities seen by the most recent load. History is retained;
+-- entities that stopped appearing keep an older last_seen_load and drop out here.

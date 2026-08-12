@@ -41,10 +41,16 @@ export DATABASE_URL=postgresql://<user>:<pass>@localhost:5432/warehouse
 python scripts/run_db_migrations.py --database-url "$DATABASE_URL"   # migrations
 pytest tests/ -q                                                     # tests
 python -m automation_twin.cli validate-graph                         # graph integrity
+python scripts/load_automation_twin.py                               # load graph into Postgres
 python -m automation_twin.cli simulate valid_campaign_propagation    # dry-run
 python -m automation_twin.cli baseline-coverage                      # coverage
+python -m automation_twin.cli unresolved                             # what we cannot see
 cd transform && dbt build --profiles-dir . --target warehouse        # models
 ```
+
+`load_automation_twin.py` is refresh-safe: re-running updates entities in place
+and records a new load, so a corrected observation is never frozen behind its
+first write. Current-state marts select the latest load; history is retained.
 
 Runtime locations are configurable and default to repository-relative paths:
 `REVOPS_ARTIFACT_ROOT`, `REVOPS_LEDGER_PATH`, `REVOPS_CHECKPOINT_PATH`,

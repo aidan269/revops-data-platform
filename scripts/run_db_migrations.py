@@ -12,12 +12,9 @@ import psycopg2
 
 
 ROOT = Path(__file__).resolve().parents[1]
-# NOTE: this default names database "revops", but docker-compose.yml provisions
-# POSTGRES_DB=warehouse. The local database is "warehouse"; "revops" is the role.
-# The default is left unchanged deliberately — changing it is a separate, validated
-# decision. Pass --database-url (or DATABASE_URL) explicitly against local Docker:
-#   postgresql://revops:revops@localhost:5432/warehouse
-DEFAULT_DATABASE_URL = "postgresql://revops:revops@localhost:5432/revops"
+# docker-compose.yml provisions POSTGRES_DB=warehouse with role "revops".
+# The default therefore names the database "warehouse", not the role.
+DEFAULT_DATABASE_URL = "postgresql://revops:revops@localhost:5432/warehouse"
 MIGRATIONS = (
     "03_hubspot_deals.sql",
     "04_hubspot_campaigns.sql",
@@ -28,6 +25,7 @@ MIGRATIONS = (
     "09_brand_inbound_grants.sql",
     "10_automation_digital_twin.sql",
     "11_automation_twin_grants.sql",
+    "12_automation_twin_refresh.sql",
 )
 LOCK_ID = 714005
 
@@ -84,7 +82,7 @@ def main() -> None:
     parser.add_argument(
         "--database-url",
         default=os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL),
-        help="PostgreSQL URL; defaults to DATABASE_URL or the local revops database",
+        help="PostgreSQL URL; defaults to DATABASE_URL or the local warehouse database",
     )
     args = parser.parse_args()
     apply_migrations(args.database_url)

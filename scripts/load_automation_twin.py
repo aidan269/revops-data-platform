@@ -12,13 +12,16 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
+import hashlib
+from datetime import datetime, timezone
+
 import psycopg2
 from psycopg2.extras import Json
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from automation_twin.adapters import build_graph            # noqa: E402
+from automation_twin.adapters import build_graph, collection_run_id  # noqa: E402
 from automation_twin.policy import run_policies             # noqa: E402
 from automation_twin.fixtures import FIXTURES               # noqa: E402
 from automation_twin.simulator import simulate              # noqa: E402
@@ -29,17 +32,39 @@ TABLES = ("automation_findings", "automation_runs", "automation_field_access",
           "automation_source_snapshots")
 
 
-def upsert(cur, table, rows, key, jsonb=()):
-    n = 0
+def _content_hash(row: dict) -> str:
+    return hashlib.sha256(
+        json.dumps(row, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+
+def upsert(cur, table, rows, key, load_id, jsonb=()):
+    """Refresh-safe upsert.
+
+    ON CONFLICT DO UPDATE, never DO NOTHING: an entity seen again has its mutable
+    columns and last_seen_load refreshed, so a corrected observation is not frozen
+    behind its first write. first_seen_load is preserved.
+    """
+    inserted = updated = 0
     for r in rows:
-        cols = list(r)
-        vals = [Json(r[c]) if c in jsonb else r[c] for c in cols]
+        payload = dict(r)
+        payload["content_hash"] = _content_hash(r)
+        payload["first_seen_load"] = load_id
+        payload["last_seen_load"] = load_id
+        payload["last_refreshed_at"] = datetime.now(timezone.utc)
+        cols = list(payload)
+        vals = [Json(payload[c]) if c in jsonb else payload[c] for c in cols]
+        updatable = [c for c in cols if c not in (key, "first_seen_load")]
+        setters = ", ".join(f"{c} = EXCLUDED.{c}" for c in updatable)
         cur.execute(
             f"INSERT INTO raw.{table} ({', '.join(cols)}) "
             f"VALUES ({', '.join(['%s'] * len(cols))}) "
-            f"ON CONFLICT ({key}) DO NOTHING", vals)
-        n += cur.rowcount
-    return n
+            f"ON CONFLICT ({key}) DO UPDATE SET {setters} "
+            f"RETURNING (xmax = 0) AS was_insert", vals)
+        if cur.fetchone()[0]:
+            inserted += 1
+        else:
+            updated += 1
+    return {"inserted": inserted, "refreshed": updated}
 
 
 def main() -> None:
@@ -74,14 +99,21 @@ def main() -> None:
     counts = {}
     with psycopg2.connect(args.database_url) as conn, conn.cursor() as cur:
         cur.execute("SELECT pg_advisory_xact_lock(%s)", (714010,))
-        counts["snapshots"] = upsert(cur, "automation_source_snapshots", d["snapshots"], "snapshot_id")
-        counts["assets"] = upsert(cur, "automation_assets", d["assets"], "asset_id")
-        counts["nodes"] = upsert(cur, "automation_nodes", d["nodes"], "node_id", jsonb=("config",))
-        counts["edges"] = upsert(cur, "automation_edges", d["edges"], "edge_id")
-        counts["field_access"] = upsert(cur, "automation_field_access", d["field_access"], "access_id")
+        run_id = collection_run_id([s["source_artifact"] for s in d["snapshots"]])
+        graph_hash = _content_hash(d)
+        cur.execute(
+            "INSERT INTO raw.automation_loads (collection_run_id, graph_content_hash, source_count, notes) "
+            "VALUES (%s, %s, %s, %s) RETURNING load_id",
+            (run_id, graph_hash, len(d["snapshots"]), "automation_twin loader"))
+        load_id = cur.fetchone()[0]
+        counts["snapshots"] = upsert(cur, "automation_source_snapshots", d["snapshots"], "snapshot_id", load_id)
+        counts["assets"] = upsert(cur, "automation_assets", d["assets"], "asset_id", load_id)
+        counts["nodes"] = upsert(cur, "automation_nodes", d["nodes"], "node_id", load_id, jsonb=("config",))
+        counts["edges"] = upsert(cur, "automation_edges", d["edges"], "edge_id", load_id)
+        counts["field_access"] = upsert(cur, "automation_field_access", d["field_access"], "access_id", load_id)
         counts["findings"] = upsert(cur, "automation_findings",
-                                    [asdict(f) for f in findings], "finding_id")
-        counts["runs"] = upsert(cur, "automation_runs", runs, "run_id",
+                                    [asdict(f) for f in findings], "finding_id", load_id)
+        counts["runs"] = upsert(cur, "automation_runs", runs, "run_id", load_id,
                                 jsonb=("traversed_nodes", "proposed_writes",
                                        "blocked_writes", "findings"))
         totals = {}

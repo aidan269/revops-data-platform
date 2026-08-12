@@ -7,3 +7,8 @@ select
     executed_externally, created_at,
     false as authorizes_external_write
 from {{ source('raw', 'automation_runs') }}
+where last_seen_load = (select max(load_id) from {{ source('raw', 'automation_loads') }})
+
+
+-- Current state = entities seen by the most recent load. History is retained;
+-- entities that stopped appearing keep an older last_seen_load and drop out here.
