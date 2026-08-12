@@ -2,7 +2,7 @@
 -- acquisition channel, primary-contact seniority, days-to-close, and deal amount.
 -- Also carries enrichment coverage flags so every ICP claim discloses its data backing.
 --
--- Reconciles to ~1,885 closed-won deals (hs_is_closed_won = true).
+-- Reconciles exactly to the current distinct closed-won deals in dim_deal.
 --
 -- Sources:
 --   analytics_analytics.dim_deal (deal facts, hs_is_closed_won)
@@ -25,36 +25,63 @@ channels as (
 ),
 gaps as (
     select * from {{ ref('mart_enrichment_gaps') }}
+),
+deal_contact_candidates as (
+    select
+        d.deal_id,
+        d.amount,
+        d.createdate as deal_createdate,
+        d.closedate as deal_closedate,
+        dc.contact_id,
+        c.email,
+        c.jobtitle,
+        c.hs_seniority,
+        c.company_id,
+        c.company_name,
+        c.industry,
+        c.numberofemployees,
+        c.hs_employee_range,
+        ch.channel as acquisition_channel,
+        ch.utm_source,
+        g.gap_hs_seniority,
+        g.gap_industry,
+        g.gap_hs_employee_range,
+        row_number() over (
+            partition by d.deal_id
+            order by c.createdate nulls last, dc.contact_id nulls last
+        ) as contact_rank
+    from deals d
+    left join deal_contacts dc on d.deal_id = dc.deal_id
+    left join contacts c on dc.contact_id = c.contact_id
+    left join channels ch on dc.contact_id = ch.contact_id
+    left join gaps g on dc.contact_id = g.contact_id
 )
 
 select
-    d.deal_id,
-    d.amount,
-    d.createdate as deal_createdate,
-    d.closedate as deal_closedate,
-    extract(epoch from (d.closedate - d.createdate)) / 86400 as days_to_close,
+    deal_id,
+    amount,
+    deal_createdate,
+    deal_closedate,
+    extract(epoch from (deal_closedate - deal_createdate)) / 86400 as days_to_close,
 
     -- Contact + firmographics
-    dc.contact_id,
-    c.email,
-    c.jobtitle,
-    c.hs_seniority,
-    c.company_id,
-    c.company_name,
-    c.industry,
-    c.numberofemployees,
-    c.hs_employee_range,
+    contact_id,
+    email,
+    jobtitle,
+    hs_seniority,
+    company_id,
+    company_name,
+    industry,
+    numberofemployees,
+    hs_employee_range,
 
     -- Acquisition channel (first-touch)
-    ch.channel as acquisition_channel,
-    ch.utm_source,
+    acquisition_channel,
+    utm_source,
 
     -- Enrichment coverage flags (from mart_enrichment_gaps)
-    g.gap_hs_seniority,
-    g.gap_industry,
-    g.gap_hs_employee_range
-from deals d
-inner join deal_contacts dc on d.deal_id = dc.deal_id
-inner join contacts c on dc.contact_id = c.contact_id
-inner join channels ch on dc.contact_id = ch.contact_id
-left join gaps g on dc.contact_id = g.contact_id
+    gap_hs_seniority,
+    gap_industry,
+    gap_hs_employee_range
+from deal_contact_candidates
+where contact_rank = 1
