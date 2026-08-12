@@ -114,3 +114,28 @@ Long-running jobs (dbt builds, extracts, compose runs) should run under
   there's more than one scheduled job — that's the resume-grade upgrade.
 - **Local model:** Llama 3.1 8B is a fine default via Ollama; size up if enrichment
   classification needs it.
+
+## Automation digital twin
+
+```
+ evidence sources                canonical graph              consumers
+ ────────────────                ───────────────              ─────────
+ HubSpot artifacts ─┐        ┌─ automation_source_snapshots ─┐
+ Apollo artifacts  ─┤        │  automation_assets            │─ dbt marts
+ Zapier artifacts  ─┼─ adapters ─ automation_nodes / edges   │─ policy engine
+ Forms (CRM-013)   ─┤        │  automation_field_access      │─ LangGraph simulator
+ Warehouse         ─┤        │  automation_runs / findings   │
+ Audit ledger      ─┘        └─ automation_approvals ────────┘─ approval boundary
+                                        │
+                                        └─ the ONLY table that may authorize an
+                                           external write, and only with a named
+                                           approver. Everything else is CHECKed false.
+```
+
+Adapters are deterministic and idempotent, hash their inputs, and classify each
+surface `COLLECTED` / `PARTIAL` / `NOT_COLLECTED`. Observation and inference are
+kept in separate columns throughout; inferred edges must carry an evidence
+reference. The simulator classifies each modelled rule as `would_write`,
+`would_skip`, `would_conflict` or `cannot_evaluate`, stops safely on missing or
+ambiguous targets, and never overwrites a populated destination unless the rule
+explicitly says to.

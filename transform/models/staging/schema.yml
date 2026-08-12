@@ -55,6 +55,19 @@ sources:
         description: "Twitter/X historical-vs-PDF cross-check. PDF has no deal IDs; resolved by deal name."
         loaded_at_field: imported_at
 
+      - name: automation_source_snapshots
+        description: "Automation twin evidence provenance. NOT_COLLECTED surfaces never claim a baseline."
+        loaded_at_field: imported_at
+      - name: automation_assets
+        description: "Canonical automation assets across HubSpot, Apollo, Zapier, forms and warehouse."
+      - name: automation_edges
+        description: "Automation dependency edges; unresolved endpoints are marked, never dropped."
+      - name: automation_field_access
+        description: "Which asset reads or writes which system/object/property."
+      - name: automation_findings
+        description: "Policy findings. Observation and inference are separate columns."
+      - name: automation_runs
+        description: "Simulation runs. run_kind='simulation' can never be executed_externally."
 
 seeds:
   - name: gtm_deal_motion_overrides

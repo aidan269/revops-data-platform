@@ -26,6 +26,8 @@ MIGRATIONS = (
     "07_gtm_campaigns.sql",
     "08_brand_inbound_recovery.sql",
     "09_brand_inbound_grants.sql",
+    "10_automation_digital_twin.sql",
+    "11_automation_twin_grants.sql",
 )
 LOCK_ID = 714005
 
