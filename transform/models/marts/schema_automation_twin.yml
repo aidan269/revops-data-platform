@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: automation_current_assets
+    description: "Current automation assets with their evidence provenance."
+    columns:
+      - name: asset_id
+        tests: [not_null, unique]
+      - name: state
+        tests:
+          - accepted_values:
+              arguments: {values: ["active", "off", "draft", "unknown"]}
+      - name: evidence_state
+        tests:
+          - accepted_values:
+              arguments: {values: [COLLECTED, PARTIAL, NOT_COLLECTED]}
+      - name: authorizes_external_write
+        tests:
+          - accepted_values:
+              arguments: {values: [false]}
+  - name: automation_current_edges
+    columns:
+      - name: edge_id
+        tests: [not_null, unique]
+      - name: basis
+        tests:
+          - accepted_values:
+              arguments: {values: [observed, inferred]}
+      - name: authorizes_external_write
+        tests:
+          - accepted_values:
+              arguments: {values: [false]}
+  - name: automation_field_writer_conflicts
+    columns:
+      - name: property_name
+        tests: [not_null]
+      - name: authorizes_external_write
+        tests:
+          - accepted_values:
+              arguments: {values: [false]}
+  - name: automation_unresolved_dependencies
+    columns:
+      - name: gap_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments: {values: [uncollected_surface, unresolved_edge]}
+  - name: automation_baseline_coverage
+    columns:
+      - name: source_system
+        tests: [not_null, unique]
+      - name: dishonest_baselines
+        tests:
+          - accepted_values:
+              arguments: {values: [0]}
+  - name: automation_simulation_outcomes
+    columns:
+      - name: run_id
+        tests: [not_null, unique]
+      - name: executed_externally
+        tests:
+          - accepted_values:
+              arguments: {values: [false]}
+      - name: run_kind
+        tests:
+          - accepted_values:
+              arguments: {values: [simulation, observed]}

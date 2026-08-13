@@ -14,3 +14,16 @@ revops:
       schema: analytics
       # threads sized to the host CPU count (sysctl -n hw.ncpu = 8 on this Mac)
       threads: 8
+
+    # Additive target for the actual local Docker database. docker-compose.yml
+    # provisions POSTGRES_DB=warehouse; the historical `dev` target above names
+    # `revops` and is deliberately left unchanged. Use: dbt build --target warehouse
+    warehouse:
+      type: postgres
+      host: localhost
+      user: revops
+      password: revops
+      port: 5432
+      dbname: warehouse
+      schema: analytics
+      threads: 8

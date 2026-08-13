@@ -27,3 +27,13 @@ models:
     marts:
       +schema: analytics
       +materialized: table
+
+seeds:
+  revops:
+    gtm_deal_motion_overrides:
+      +column_types:
+        deal_id: varchar
+        customer_motion: varchar
+        evidence_note: varchar
+        reviewed_by: varchar
+        reviewed_at: varchar
