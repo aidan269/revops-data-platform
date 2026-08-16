@@ -10,6 +10,8 @@ import hashlib
 import json
 import pathlib
 
+import pytest
+
 REPO = pathlib.Path(__file__).resolve().parents[1]
 ART = REPO / "hermes_shared/artifacts"
 REGISTER = ART / "CRM-009_closed_arr_population_register.csv"
@@ -19,6 +21,19 @@ PROPOSALS = REPO / "hermes_shared/ledger/proposals.json"
 LEDGER = REPO / "hermes_shared/ledger/execution_events.jsonl"
 CRM008_TARGET = (REPO / "hermes_shared/execution_packages/CRM-008_closed_won"
                  / "CRM-008_closed_won_final_target.csv")
+
+# METHOD is committed; everything else here is operational evidence — live CRM
+# state, regenerated per run, deliberately NOT committed. Skip the module cleanly
+# when it is absent so a checkout without the evidence never reports a false pass
+# or a false failure.
+_EVIDENCE_PRESENT = all(
+    p.exists() for p in (REGISTER, BLANK, PROPOSALS, LEDGER, CRM008_TARGET)
+)
+pytestmark = pytest.mark.skipif(
+    not _EVIDENCE_PRESENT,
+    reason="CRM-009 closed-ARR evidence not present; hermes_shared/artifacts, "
+           "ledger and execution_packages are not committed",
+)
 
 
 def proposal():

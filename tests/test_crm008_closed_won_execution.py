@@ -9,6 +9,8 @@ import hashlib
 import json
 import pathlib
 
+import pytest
+
 REPO = pathlib.Path(__file__).resolve().parents[1]
 PKG = REPO / "hermes_shared/execution_packages/CRM-008_closed_won"
 TARGET = PKG / "CRM-008_closed_won_final_target.csv"
@@ -21,6 +23,19 @@ PROPOSALS = REPO / "hermes_shared/ledger/proposals.json"
 RULE_INPUTS = {"x", "Twitter"}
 HELD_OUT = {"twitter.com", "twitter", "t.co"}
 PROPOSED = "X / Twitter"
+
+# The execution package and its supporting artifacts are operational evidence —
+# live CRM state, regenerated per run, deliberately NOT committed. Skip the
+# module cleanly when it is absent so a checkout without the evidence never
+# reports a false pass or a false failure.
+_EVIDENCE_PRESENT = all(
+    p.exists() for p in (TARGET, ROLLBACK, SUMMARY, CANDIDATES, EXCEPTIONS, PROPOSALS)
+)
+pytestmark = pytest.mark.skipif(
+    not _EVIDENCE_PRESENT,
+    reason="CRM-008 closed-won execution package not present; "
+           "hermes_shared/execution_packages, artifacts and ledger are not committed",
+)
 
 
 def rows(p):

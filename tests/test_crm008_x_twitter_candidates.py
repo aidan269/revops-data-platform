@@ -9,6 +9,8 @@ import hashlib
 import json
 import pathlib
 
+import pytest
+
 REPO = pathlib.Path(__file__).resolve().parents[1]
 ART = REPO / "hermes_shared/artifacts"
 CANDIDATES = ART / "CRM-008_x_twitter_taxonomy_candidates.csv"
@@ -17,6 +19,17 @@ PROPOSALS = REPO / "hermes_shared/ledger/proposals.json"
 
 NORMALIZE_INPUTS = {"x", "Twitter"}
 NORMALIZED = "X / Twitter"
+
+# Every test here reads operational evidence — live CRM state that is regenerated
+# per run and deliberately NOT committed. Skip the module cleanly when it is
+# absent so a checkout without the evidence never reports a false pass or a false
+# failure.
+_EVIDENCE_PRESENT = all(p.exists() for p in (CANDIDATES, EXCEPTIONS, PROPOSALS))
+pytestmark = pytest.mark.skipif(
+    not _EVIDENCE_PRESENT,
+    reason="CRM-008 candidate evidence not present; "
+           "hermes_shared/artifacts and hermes_shared/ledger are not committed",
+)
 
 
 def rows(path):
