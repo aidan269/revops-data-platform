@@ -81,14 +81,13 @@ and heavy gaps is a data-quality finding, not a performance finding.
 
 Recorded as of the CRM-012 build for reconciliation testing only:
 
-- **Q326 - Apex Free Exploitability Review** — pre-existing; one named contact
-  (identity redacted) and the existing Apex - Groupe APICIL deal attached.
-- **Demo vs PLG** — two named contacts attached (identities redacted), with the
-  existing Aptean and Sierra Nevada deals.
-- **CloudSec List** — a single named contact (identity redacted; see the
-  operational evidence artifacts) and their existing
-  Amplitude deal. The second contact and Sierra Nevada were deliberately removed
-  and must remain associated only with Demo vs PLG.
+- **Q326 - Apex Free Exploitability Review** — pre-existing; Rahma Hafi and the
+  existing Apex - Groupe APICIL deal attached.
+- **Demo vs PLG** — Snehal Kumar and Gillian Dom attached, with the existing
+  Aptean and Sierra Nevada deals.
+- **CloudSec List** — Lily Chau (`lily@amplitude.com`) and her existing
+  "- Amplitude" deal. Gillian Dom and Sierra Nevada were deliberately removed and
+  must remain associated only with Demo vs PLG.
 
 The reconciliation tests assert these hold once extraction has run. They never
 create or repair an association; a failure is a review finding for a human.

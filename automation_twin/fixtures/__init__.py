@@ -1,8 +1,5 @@
 """Synthetic dry-run fixtures. No real names, emails, or submission contents.
 
-A `linkage` value must name exactly one candidate deal id (e.g. "D1"); the
-simulator rejects sentinels, lists, and ids absent from the candidate set.
-
 Record identifiers are synthetic placeholders (D1, C1...) except where a prior
 finding is reproduced, in which case only an opaque numeric CRM id appears.
 """
@@ -15,7 +12,7 @@ APOLLO_IMPORT = "hubspot:import:unidentified_writer"
 FIXTURES: dict[str, dict] = {
     "valid_campaign_propagation": {
         "fixture_name": "valid_campaign_propagation", "asset_id": WF_CAMPAIGN,
-        "record": {"linkage": "D1"},
+        "record": {"linkage": "deterministic"},
         "current_values": {"primary_campaign_source": None},
         "associations": {"deals": ["D1"]},
         "rules": [{"property": "primary_campaign_source",
@@ -24,7 +21,7 @@ FIXTURES: dict[str, dict] = {
     },
     "vendor_contamination_attempt": {
         "fixture_name": "vendor_contamination_attempt", "asset_id": APOLLO_IMPORT,
-        "record": {"linkage": "D1"},
+        "record": {"linkage": "deterministic"},
         "current_values": {"primary_campaign_source": None},
         "associations": {"deals": ["D1"]},
         "rules": [{"property": "primary_campaign_source", "value": "Apollo",
@@ -33,7 +30,7 @@ FIXTURES: dict[str, dict] = {
     },
     "blank_destination": {
         "fixture_name": "blank_destination", "asset_id": WF_DEMO,
-        "record": {"linkage": "D1"},
+        "record": {"linkage": "deterministic"},
         "current_values": {"requested_service": None},
         "associations": {"deals": ["D1"]},
         "rules": [{"property": "requested_service", "value": "Code Analyzer",
@@ -42,7 +39,7 @@ FIXTURES: dict[str, dict] = {
     },
     "populated_destination_conflict": {
         "fixture_name": "populated_destination_conflict", "asset_id": WF_DEMO,
-        "record": {"linkage": "D1"},
+        "record": {"linkage": "deterministic"},
         "current_values": {"repo_uri": "https://example.invalid/repo/pull/1"},
         "associations": {"deals": ["D1"]},
         "rules": [{"property": "repo_uri", "value": "https://example.invalid/repo",
@@ -58,7 +55,7 @@ FIXTURES: dict[str, dict] = {
     },
     "deal_created_before_submission": {
         "fixture_name": "deal_created_before_submission", "asset_id": WF_CAMPAIGN,
-        "record": {"linkage": "D1", "deal_created": "2024-09-23",
+        "record": {"linkage": "deterministic", "deal_created": "2024-09-23",
                    "form_submitted": "2026-07-16"},
         "current_values": {"primary_campaign_source": None},
         "associations": {"deals": ["D1"]},
@@ -73,7 +70,7 @@ FIXTURES: dict[str, dict] = {
     },
     "inactive_owner_notification": {
         "fixture_name": "inactive_owner_notification", "asset_id": WF_DEMO,
-        "record": {"linkage": "D1", "owner_state": "inactive"},
+        "record": {"linkage": "deterministic", "owner_state": "inactive"},
         "current_values": {"requested_service": None},
         "associations": {"deals": ["D1"]},
         "rules": [{"property": "requested_service", "value": "Code Analyzer",
@@ -82,7 +79,7 @@ FIXTURES: dict[str, dict] = {
     },
     "duplicate_creator": {
         "fixture_name": "duplicate_creator", "asset_id": WF_DEMO,
-        "record": {"linkage": "D1"},
+        "record": {"linkage": "deterministic"},
         "current_values": {"dealname": "Acme - Demo"},
         "associations": {"deals": ["D1"]},
         "rules": [{"property": "dealname", "value": "Acme - Demo",

@@ -1,18 +1,5 @@
 -- AUTOMATION-DIGITAL-TWIN — refresh-safe versioning.
---
--- Forward migration. Migration 10 is already applied elsewhere and its checksum
--- must not change, so the refresh model is added here rather than edited in.
---
--- Problem this fixes: the initial loader used ON CONFLICT DO NOTHING, which meant
--- a row written once could never be corrected. An asset that changed state, an
--- edge that resolved, or a finding that cleared would be frozen at its first
--- observation forever.
---
--- Model: every load is recorded in raw.automation_loads. Each entity carries the
--- load that first saw it and the load that last saw it, plus a content hash.
--- Re-loading UPDATES last_seen_load and mutable columns instead of skipping.
--- History is preserved because entities are never deleted: an entity that stops
--- appearing simply keeps its older last_seen_load and drops out of "current".
+-- Forward migration: migration 10 remains immutable for checksum safety.
 
 CREATE TABLE IF NOT EXISTS raw.automation_loads (
     load_id            BIGSERIAL   PRIMARY KEY,
@@ -45,7 +32,6 @@ BEGIN
 END
 $$;
 
--- Convenience view: the most recent completed load.
 CREATE OR REPLACE VIEW raw.automation_current_load AS
 SELECT max(load_id) AS load_id FROM raw.automation_loads;
 

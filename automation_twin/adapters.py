@@ -19,8 +19,6 @@ from .model import (COLLECTED, NOT_COLLECTED, PARTIAL, INFERRED, OBSERVED,
 from .config import artifact_root, ledger_path
 
 ROOT = Path(__file__).resolve().parents[1]
-
-
 def _now() -> str:
     """Actual collection time. Never a frozen literal."""
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
@@ -129,6 +127,7 @@ def hubspot_adapter(graph: Graph) -> None:
     fa("hubspot:workflow:1858050407", "dealname", "replace", OBSERVED, "high", "{Company Name} - Demo")
     fa("hubspot:workflow:1858050407", "requested_service", "replace", OBSERVED, "high", None)
     fa("hubspot:workflow:1858050407", "self_declared_attribution", "replace", OBSERVED, "high", None)
+    fa("hubspot:workflow:1858050407", "brief_project_description", "replace", OBSERVED, "high", "copied from enrolled contact during deal creation")
     fa("hubspot:workflow:1775787045", "requested_service", "replace", OBSERVED, "high", None)
     fa("hubspot:workflow:1775787045", "brief_project_description", "replace", OBSERVED, "high", None)
     graph.field_access.append(FieldAccess(
@@ -217,12 +216,7 @@ def zapier_adapter(graph: Graph) -> None:
 
 
 def warehouse_adapter(graph: Graph, database_url: str | None = None) -> None:
-    """Attribution evidence from prior recorded findings.
-
-    Fails closed. Without the CRM-017 artifact present this records a
-    NOT_COLLECTED snapshot and creates NO assets, edges or field access. It never
-    materialises previously reported counts as freshly collected evidence.
-    """
+    """Load attribution evidence only when its recorded artifact is actually present."""
     art = "CRM-017_manifest.json"
     present = (ART() / art).exists()
     if not present:
@@ -237,7 +231,6 @@ def warehouse_adapter(graph: Graph, database_url: str | None = None) -> None:
     manifest = json.loads((ART() / art).read_text(encoding="utf-8"))
     counts = manifest.get("population", {}) or {}
     contaminated = counts.get("total_contaminated_contacts")
-
     graph.assets.append(Asset(
         asset_id="hubspot:property:primary_campaign_source", snapshot_id=s.snapshot_id,
         source_system="hubspot", native_id="primary_campaign_source",
