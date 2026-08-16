@@ -33,6 +33,7 @@ class SimState(TypedDict, total=False):
     current_values: dict[str, Any]
     associations: dict[str, list[str]]
     rules: list[dict]
+    resolved_target: str
     traversed: Annotated[list[str], _merge]
     proposed_writes: Annotated[list[dict], _merge]
     blocked_writes: Annotated[list[dict], _merge]
@@ -56,24 +57,45 @@ def n_trigger(state: SimState) -> SimState:
 
 
 def n_resolve_target(state: SimState) -> SimState:
-    """Deterministic linkage only. Zero or many targets stop safely."""
+    """Resolve exactly one target deal, or stop safely.
+
+    A deterministic linkage must name exactly one deal id, and that id must be
+    present among the candidate targets. Zero, multiple, absent or invalid
+    linkage all stop safely — a target is never guessed.
+    """
     assoc = state.get("associations", {}) or {}
-    targets = assoc.get("deals", [])
+    targets = list(assoc.get("deals", []) or [])
     linkage = (state.get("record", {}) or {}).get("linkage")
 
+    def stop(code, detail, extra=None):
+        out = {"traversed": ["resolve_target"],
+               "exceptions": [{"code": code, "detail": detail}],
+               "result": "stopped_safe"}
+        if extra:
+            out["policy_violations"] = extra
+        return out
+
     if not targets:
-        return {"traversed": ["resolve_target"],
-                "exceptions": [{"code": "NO_TARGET",
-                                "detail": "no associated deal; routed to exception, no target guessed"}],
-                "result": "stopped_safe"}
-    if len(targets) > 1 and not linkage:
-        return {"traversed": ["resolve_target"],
-                "exceptions": [{"code": "AMBIGUOUS_TARGET",
-                                "detail": f"{len(targets)} candidate deals and no deterministic linkage"}],
-                "policy_violations": [{"policy_id": "POL-009",
-                                       "detail": "heuristic selection refused"}],
-                "result": "stopped_safe"}
-    return {"traversed": ["resolve_target"]}
+        return stop("NO_TARGET", "no associated deal; routed to exception, no target guessed")
+
+    if linkage is None or linkage == "":
+        if len(targets) == 1:
+            return {"traversed": ["resolve_target"], "resolved_target": targets[0]}
+        return stop("AMBIGUOUS_TARGET",
+                    f"{len(targets)} candidate deals and no deterministic linkage",
+                    [{"policy_id": "POL-009", "detail": "heuristic selection refused"}])
+
+    # A linkage must be a single, concrete deal id.
+    if isinstance(linkage, (list, tuple, set)):
+        return stop("INVALID_LINKAGE",
+                    f"linkage names {len(linkage)} ids; a deterministic link must name exactly one")
+    if not isinstance(linkage, str):
+        return stop("INVALID_LINKAGE", f"linkage is {type(linkage).__name__}, expected a single deal id")
+    if linkage not in targets:
+        return stop("LINKAGE_TARGET_NOT_FOUND",
+                    f"linkage names a deal that is not among the {len(targets)} candidate targets")
+
+    return {"traversed": ["resolve_target"], "resolved_target": linkage}
 
 
 def n_evaluate_writes(state: SimState) -> SimState:
@@ -137,7 +159,7 @@ def n_approval_interrupt(state: SimState) -> SimState:
     payload = {
         "target_system": "hubspot",
         "asset_id": state.get("asset_id"),
-        "records": (state.get("associations", {}) or {}).get("deals", []),
+        "records": [state["resolved_target"]] if state.get("resolved_target") else [],
         "fields": [w["property"] for w in writes],
         "old_values": {w["property"]: w["old_value"] for w in writes},
         "proposed_values": {w["property"]: w["proposed_value"] for w in writes},

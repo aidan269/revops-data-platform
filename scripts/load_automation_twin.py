@@ -38,7 +38,12 @@ def _content_hash(row: dict) -> str:
 
 
 def upsert(cur, table, rows, key, load_id, jsonb=()):
-    """Refresh mutable observations while preserving when each entity first appeared."""
+    """Refresh-safe upsert.
+
+    ON CONFLICT DO UPDATE, never DO NOTHING: an entity seen again has its mutable
+    columns and last_seen_load refreshed, so a corrected observation is not frozen
+    behind its first write. first_seen_load is preserved.
+    """
     inserted = updated = 0
     for r in rows:
         payload = dict(r)
