@@ -3,14 +3,17 @@ Reviewer block. Gerald fills this in on every PR. The reviewer approves OUTCOMES
 GUARDRAILS, not raw SQL — the dbt tests cover correctness. Keep it readable by a non-developer.
 -->
 
-**Notion task:** <!-- paste the Notion task page URL -->
-
 ## What changed (plain English)
 <!-- 2–4 sentences: what this task built and why it matters. No jargon. -->
 
 ## Verification evidence
 <!-- The proof it works. e.g. "26/26 checks passed. dbt build: 26 pass / 0 error.
      Reconciliations: closed-won = 1,885 ✓, corrupted-UTM bucket = 138 ✓." -->
+
+**Evidence-dependent suites run locally?** <!-- Required. CI runs only the portable subset:
+     the suites that read hermes_shared/artifacts, ledger and execution_packages skip there,
+     so ~85 tests are invisible to CI. Run `pytest tests/ -q` on a checkout WITH operational
+     evidence present and paste the counts (passed / failed / skipped), or state why not. -->
 
 ## Guardrail status
 - [ ] Read-only (no HubSpot writes) — OR — live write ran through `writeback/hubspot_writer.py`
@@ -22,5 +25,11 @@ GUARDRAILS, not raw SQL — the dbt tests cover correctness. Keep it readable by
      e.g. "Do the top-3 channels by win rate look right?" Point at the readout CSV. -->
 
 ---
-**How to approve:** review the above, then set this task's **Status → Signed Off** in the
-🏊 Tasks board. Do **not** click Merge here — the merge happens automatically from that sign-off.
+**Approval:** approval is a **GitHub PR review on this pull request**. The author never
+approves and never merges their own PR — merge only after another reviewer has left an
+approving review.
+
+**What approval covers:** approving this PR approves **code only**. It does **not** authorize
+any CRM mutation. Executing a change against live CRM records requires a separate, explicit
+approval that names the exact proposal and target population — see step 3 of
+`hermes_shared/HANDOFF_PROTOCOL.md`.
