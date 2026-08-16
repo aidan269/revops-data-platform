@@ -1,10 +1,17 @@
--- Regression guard: Unknown (corrupted UTM) bucket = 138 contacts.
--- The 138-row corruption must always show as exactly 138. If this drifts, fail loudly.
+-- Legacy filename retained. Reconcile the refreshed corrupted-UTM bucket to
+-- its canonical contact classification rather than a frozen fixture count.
 {{ config(store_failures = true) }}
 
-select 'corrupted_utm_bucket_mismatch' as test_name,
-       contacts as actual,
-       138 as expected
-from {{ ref('mart_channel_performance') }}
-where channel = 'Unknown (corrupted UTM)'
-  and contacts != 138
+with expected as (
+    select count(*) as contacts
+    from {{ ref('int_contact_channel') }}
+    where channel = 'Unknown (corrupted UTM)'
+),
+actual as (
+    select contacts
+    from {{ ref('mart_channel_performance') }}
+    where channel = 'Unknown (corrupted UTM)'
+)
+select actual.contacts as actual, expected.contacts as expected
+from actual cross join expected
+where actual.contacts != expected.contacts

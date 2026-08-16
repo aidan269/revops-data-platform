@@ -52,7 +52,7 @@ won_thresholds as (
     ) d
 ),
 
-open_deals as (
+open_deal_candidates as (
     select
         d.deal_id,
         d.amount,
@@ -65,13 +65,20 @@ open_deals as (
         c.hs_seniority,
         c.numberofemployees,
         ch.channel as acquisition_channel,
-        extract(epoch from (now() - d.createdate)) / 86400 as days_open
+        extract(epoch from (now() - d.createdate)) / 86400 as days_open,
+        row_number() over (
+            partition by d.deal_id
+            order by c.createdate nulls last, dc.contact_id
+        ) as contact_rank
     from {{ ref('dim_deal') }} d
     inner join {{ ref('bridge_deal_contact') }} dc on d.deal_id = dc.deal_id
     inner join {{ ref('dim_contact') }} c on dc.contact_id = c.contact_id
     inner join {{ ref('int_contact_channel') }} ch on dc.contact_id = ch.contact_id
     where d.hs_is_closed_won = false
       and d.dealstage != 'closedlost'
+),
+open_deals as (
+    select * from open_deal_candidates where contact_rank = 1
 )
 
 select
