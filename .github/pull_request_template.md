@@ -1,35 +1,40 @@
-<!--
-Reviewer block. Gerald fills this in on every PR. The reviewer approves OUTCOMES and
-GUARDRAILS, not raw SQL — the dbt tests cover correctness. Keep it readable by a non-developer.
--->
+### What changed (plain English)
+<!-- What a reviewer needs to understand the change without reading the diff. -->
 
-## What changed (plain English)
-<!-- 2–4 sentences: what this task built and why it matters. No jargon. -->
+### Verification evidence
+<!-- Test counts, and reconciliations to known truths (closed-won ≈1,885, corrupted-UTM = 138). -->
 
-## Verification evidence
-<!-- The proof it works. e.g. "26/26 checks passed. dbt build: 26 pass / 0 error.
-     Reconciliations: closed-won = 1,885 ✓, corrupted-UTM bucket = 138 ✓." -->
+- CI portable suite:
+- CI migrations / safety invariants:
+- Evidence-dependent suites run locally with evidence present? (CI only runs the portable
+  subset — ~85 tests are invisible to it. State whether you ran them and the result, or
+  "not run" so it's recorded rather than assumed.)
 
-**Evidence-dependent suites run locally?** <!-- Required. CI runs only the portable subset:
-     the suites that read hermes_shared/artifacts, ledger and execution_packages skip there,
-     so ~85 tests are invisible to CI. Run `pytest tests/ -q` on a checkout WITH operational
-     evidence present and paste the counts (passed / failed / skipped), or state why not. -->
+### Guardrail status
+<!-- Read-only, or a proposal was generated? -->
 
-## Guardrail status
-- [ ] Read-only (no HubSpot writes) — OR — live write ran through `writeback/hubspot_writer.py`
-- [ ] If a write ran: whitelist enforced, dry-run reviewed first, every change logged to `analytics.hubspot_writeback_log`, human approval recorded
-- [ ] No non-whitelisted field touched; no non-empty field overwritten
+- [ ] Read-only — no HubSpot/Apollo/Zapier mutation, no proposal generated
+- [ ] A proposal was generated and handed to the coordinator (dry-run only)
+- [ ] No assertion weakened, no guardrail loosened, no evidence file committed
 
-## 👉 What to eyeball
-<!-- The 1–3 specific things you want the human to sanity-check before approving.
-     e.g. "Do the top-3 channels by win rate look right?" Point at the readout CSV. -->
+**A PR approval approves code.** It does not authorize any CRM mutation. That requires a
+separate approval naming the exact proposal and target population, given to the coordinator
+per `hermes_shared/HANDOFF_PROTOCOL.md` step 3.
+
+### 👉 What to eyeball
+<!-- Write this so a non-developer can do it in two minutes. -->
 
 ---
-**Approval:** approval is a **GitHub PR review on this pull request**. The author never
-approves and never merges their own PR — merge only after another reviewer has left an
-approving review.
 
-**What approval covers:** approving this PR approves **code only**. It does **not** authorize
-any CRM mutation. Executing a change against live CRM records requires a separate, explicit
-approval that names the exact proposal and target population — see step 3 of
-`hermes_shared/HANDOFF_PROTOCOL.md`.
+### Merge rules
+
+1. **Never merge with red CI.** A green signal has to mean something or it means nothing.
+2. **Before merging, post your answers to "what to eyeball" as a comment.** Reading your own
+   diff and writing down what you checked is the minimum bar when merging alone.
+3. **A second approving review is required when someone is available**, and is required
+   unconditionally — no solo merge — for changes touching:
+   - `writeback/`
+   - the approval boundary: `automation_twin/simulator.py`, `hermes_shared/execution_events.py`
+   - `db/` migrations
+   - `.github/workflows/`
+4. **Otherwise self-merge is permitted** once 1–3 are satisfied.
