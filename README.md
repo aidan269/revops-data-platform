@@ -55,11 +55,3 @@ first write. Current-state marts select the latest load; history is retained.
 Runtime locations are configurable and default to repository-relative paths:
 `REVOPS_ARTIFACT_ROOT`, `REVOPS_LEDGER_PATH`, `REVOPS_CHECKPOINT_PATH`,
 `DATABASE_URL`.
-
-### Why evidence and audit logs are not committed
-
-Generated inventories, manifests, run results and the append-only audit ledger
-describe live CRM state and can carry record identifiers. They are operational
-evidence, not source code, and they change on every run. They stay untracked and
-are regenerated from configured sources. Tests use synthetic, PII-free fixtures
-and never append to the production ledger.
