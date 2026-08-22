@@ -1,4 +1,4 @@
-# RevOps Data Platform
+# RevOps & CRM Data Platform
 
 HubSpot is where people *work*; this warehouse is where *history lives*.
 Ingestion → raw → transform (dbt) → curated → serve, with controlled write-back to HubSpot.
