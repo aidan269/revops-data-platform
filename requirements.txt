@@ -1,7 +1,3 @@
-psycopg2-binary>=2.9,<3
-requests>=2.31,<3
-PyYAML>=6.0,<7
-# MCP stdio server (hermes/codex_mcp.py — bridges Codex <-> host Ollama LLM)
-# Pinned to 1.x: uses mcp.server.fastmcp FastMCP API with transport='stdio'.
-mcp>=1.28,<2
-langgraph>=0.2,<1
+# Raw-data ingestion platform — only what retained code imports.
+psycopg2-binary>=2.9,<3   # extract/*.py, scripts/run_db_migrations.py
+requests>=2.31,<3         # read-only HubSpot GET calls in extract/*.py

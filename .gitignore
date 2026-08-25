@@ -4,18 +4,6 @@ __pycache__/
 .venv/
 venv/
 .env
-# ingestion local file (prototype fallback)
-leads_raw.jsonl
-# dbt
-target/
-dbt_packages/
-logs/
+
 # extract local state
 *.extract_state.json
-# Operational evidence — live CRM state, regenerated per run, never committed
-hermes_shared/artifacts/
-hermes_shared/ledger/
-decision_ledger/
-out/
-
-hermes_shared/execution_packages/

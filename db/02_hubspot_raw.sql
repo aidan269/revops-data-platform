@@ -1,6 +1,6 @@
 -- HubSpot extract tables — append-only snapshot pattern.
 -- Each extract run appends rows with an extracted_at timestamp.
--- Downstream dbt models select the latest snapshot per id.
+-- Readers select the latest snapshot per id; rows are never updated in place.
 
 CREATE TABLE IF NOT EXISTS raw.hubspot_contacts (
     id              TEXT        NOT NULL,
@@ -37,5 +37,5 @@ CREATE INDEX IF NOT EXISTS idx_hs_contacts_id     ON raw.hubspot_contacts (id, e
 CREATE INDEX IF NOT EXISTS idx_hs_companies_id    ON raw.hubspot_companies (id, extracted_at);
 CREATE INDEX IF NOT EXISTS idx_hs_contacts_email  ON raw.hubspot_contacts (email);
 
-COMMENT ON TABLE raw.hubspot_contacts  IS 'Append-only HubSpot contact snapshots. Latest per id selected by dbt.';
-COMMENT ON TABLE raw.hubspot_companies IS 'Append-only HubSpot company snapshots. Latest per id selected by dbt.';
+COMMENT ON TABLE raw.hubspot_contacts  IS 'Append-only HubSpot contact snapshots; select the latest row per id.';
+COMMENT ON TABLE raw.hubspot_companies IS 'Append-only HubSpot company snapshots; select the latest row per id.';

@@ -10,9 +10,9 @@ Usage:
 
 Extract pattern:
   - Append-only: each run writes rows with extracted_at = now().
-  - dbt dim_contact / dim_company select the latest snapshot per id.
-  - Idempotent: re-running with the same data is safe (duplicates are
-    handled by the dim's row_number() = 1 pattern).
+  - Readers select the latest snapshot per id; rows are never updated in place.
+  - Replayable: re-running appends another source snapshot; readers select
+    the latest snapshot per id using extracted_at.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from typing import Any
 import requests
 import psycopg2
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://revops:revops@localhost:5432/revops")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://revops:revops@localhost:5432/warehouse")
 HUBSPOT_TOKEN = os.getenv("HUBSPOT_PRIVATE_APP_TOKEN", "")
 HS_BASE = "https://api.hubapi.com"
 
