@@ -77,17 +77,3 @@ stale.
 
 `tests/test_db_migrations.py` enforces these boundaries, including the absence
 of any write-back module or non-GET HTTP call.
-
-## Tests
-
-```bash
-pytest tests/ -q
-```
-
-## Known gaps
-
-Native-campaign extraction is **not implemented**. Migration
-`04_hubspot_campaigns.sql` still creates the tables, but the previous
-`extract_campaigns.py` only generated synthetic data (its live path raised
-`NotImplementedError`) and was removed. Populating those tables requires a new
-read-only extractor against the HubSpot campaigns API.
