@@ -18,14 +18,8 @@ DEFAULT_DATABASE_URL = "postgresql://revops:revops@localhost:5432/warehouse"
 MIGRATIONS = (
     "03_hubspot_deals.sql",
     "04_hubspot_campaigns.sql",
-    "05_deal_source_migration.sql",
     "06_original_traffic_source.sql",
     "07_gtm_campaigns.sql",
-    "08_brand_inbound_recovery.sql",
-    "09_brand_inbound_grants.sql",
-    "10_automation_digital_twin.sql",
-    "11_automation_twin_grants.sql",
-    "12_automation_twin_refresh.sql",
 )
 LOCK_ID = 714005
 

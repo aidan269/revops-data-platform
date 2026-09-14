@@ -30,7 +30,7 @@ from datetime import datetime, timezone, timedelta
 
 import psycopg2
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://revops:revops@localhost:5432/revops")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://revops:revops@localhost:5432/warehouse")
 HUBSPOT_TOKEN = os.getenv("HUBSPOT_PRIVATE_APP_TOKEN", "")
 HS_BASE = "https://api.hubapi.com"
 

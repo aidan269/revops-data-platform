@@ -1,1 +1,0 @@
-"""Hermes safety evaluations."""
