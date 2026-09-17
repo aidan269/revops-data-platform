@@ -66,14 +66,12 @@ stale.
 
 ## Read-only boundary
 
-- Every HubSpot call is a `GET`. No extractor creates, updates, archives, or
-  deletes a CRM record, and none writes an association.
+- Every HubSpot call is a `GET`.
 - Landing tables are append-only: each run appends a snapshot with
   `extracted_at`. Nothing updates or deletes prior raw history.
 - Association edges are copied exactly as HubSpot reports them; none are
   inferred from UTM parameters, clicks, or contact membership.
-- Campaign names are read from the source; a blank name stays null rather than
-  being invented.
+- Campaign names are read from the source; a blank name stays null.
 
 `tests/test_db_migrations.py` enforces these boundaries, including the absence
 of any write-back module or non-GET HTTP call.
